@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "buildCommand": "npm run build",
+        "outputDirectory": "dist",
+        "devCommand": "npm run dev"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+        "Access-Control-Allow-Headers": "X-Requested-With, Content-Type, Authorization"
+      },
+      "continue": true
+    },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ],
+  "env": {
+    "VITE_OPENAI_API_KEY": "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"
+  }
+} 
