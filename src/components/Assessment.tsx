@@ -57,7 +57,8 @@ export function Assessment({ onComplete }: AssessmentProps) {
   const handleChangeReadiness = (readiness: AssessmentResults['changeReadiness']) => {
     const finalResults: AssessmentResults = {
       ...results as AssessmentResults,
-      changeReadiness: readiness
+      changeReadiness: readiness,
+      completedAt: new Date()
     };
     onComplete(finalResults);
   };

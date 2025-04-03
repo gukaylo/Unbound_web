@@ -18,8 +18,6 @@ export interface Goal {
   completed: boolean;
   createdAt: string;
   updatedAt: string;
-  category: string;
-  motivation: number;
 }
 
 export interface UserPreferences {

@@ -23,9 +23,7 @@ export function Progress({ goals, moodEntries }: ProgressProps) {
   const moodColors = {
     happy: 'bg-green-500',
     neutral: 'bg-yellow-500',
-    sad: 'bg-blue-500',
-    angry: 'bg-red-500',
-    tired: 'bg-purple-500'
+    sad: 'bg-red-500'
   };
 
   return (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Coach } from './pages/Coach';
 import { Tests } from './pages/Tests';
 import { Dashboard } from './pages/Dashboard';
@@ -34,9 +34,6 @@ function App() {
         if (!window.Telegram.WebApp.isExpanded) {
           window.Telegram.WebApp.expand();
         }
-        setIsReady(true);
-      } else {
-        // Not in Telegram, still set ready
         setIsReady(true);
       }
     } catch (error) {
