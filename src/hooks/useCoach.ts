@@ -1,11 +1,28 @@
 import { useState, useCallback, useEffect } from 'react';
 import OpenAI from 'openai';
 import { Message } from '../types';
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 
+// Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
   dangerouslyAllowBrowser: true
 });
+
+// Function to create chat completion without eval
+async function createChatCompletion(messages: any[]) {
+  try {
+    return await openai.chat.completions.create({
+      model: "gpt-4",
+      messages,
+      temperature: 0.8,
+      max_tokens: 2000
+    });
+  } catch (error) {
+    console.error('Chat completion error:', error);
+    throw error;
+  }
+}
 
 interface BaseTestResults {
   timestamp: number;
@@ -62,159 +79,88 @@ TONE ADAPTATION:
 - Feel their energy: if they're direct — be clear and efficient. If emotional — be warm and grounded. If unsure — be calm, bold, and supportive.
 
 PERSONALIZATION ENGINE:
+
+PERSONALIZATION ENGINE:
 - You have access to a psychological profile based on a 10-question base test.
 - Here is the user profile:
 ${baseTestResults ? JSON.stringify(baseTestResults.results, null, 2) : 'No base test profile. Infer mindset, tone, blockers, and style from user\'s input.'}
 
-INTERPRET IT LIKE THIS:
-- "energy" → how energized or clear the user is
-- "blocker" → what's getting in their way (e.g. procrastination, fear)
-- "preferred_style" → how to coach them (gentle, structured, reflective, bold)
-- "tone" → how to speak to feel natural and motivating
-- "focus" → where they want the biggest change (career, health, mindset, etc)
-- "change_style" → how big the steps should be (micro or bold)
+INTERPRET AND USE THIS PROFILE FOR EVERY RESPONSE:
+1. Life Satisfaction (${baseTestResults?.results.lifeSatisfaction || 'unknown'}):
+   - If 1-3: Use validating, energizing tone
+   - If 4-6: Use grounding, stabilizing approach
+   - If 7-8: Use momentum and positive challenge
+   - If 9-10: Focus on clarity and scaling
+
+2. Priority Area (${baseTestResults?.results.priorityArea || 'unknown'}):
+   - Health: Focus on habits and routines
+   - Relationships: Use empathy and social framing
+   - Career: Use outcome-based logic
+   - Confidence: Work with beliefs and self-talk
+   - Focus: Offer systems and tracking
+
+3. Current Mindset (${baseTestResults?.results.currentMindset || 'unknown'}):
+   - Stuck: Use small wins
+   - Unsure: Use reflection
+   - Progressing: Use momentum
+   - Overwhelmed: Use grounding
+
+4. Energy Level (${baseTestResults?.results.energyLevel || 'unknown'}):
+   - Low: Use soft tone
+   - Scattered: Offer structure
+   - Productive: Offer systems
+   - High: Use bold tone
+
+5. Internal Blocker (${baseTestResults?.results.internalBlocker || 'unknown'}):
+   - Fear: Use safety
+   - Procrastination: Use micro-actions
+   - Overthinking: Use frameworks
+   - Clarity: Use vision
+   - Overwhelm: Use grounding
+
+6. Follow-through (${baseTestResults?.results.followThroughHabits || 'unknown'}):
+   - Planner: Use triggers
+   - Starter: Use rituals
+   - Motivated: Build systems
+   - Consistent: Challenge more
+
+7. Support Style (${baseTestResults?.results.preferredSupportStyle || 'unknown'}):
+   - Push: Use challenges
+   - Encourage: Use warmth
+   - Questions: Use exploration
+   - Structure: Use lists
+
+8. Decision Style (${baseTestResults?.results.decisionStyle || 'unknown'}):
+   - Logic: Use clarity
+   - Emotion: Use empathy
+   - Overthink: Limit options
+   - Gut: Use metaphors
+
+9. Self-talk (${baseTestResults?.results.selfTalkInFailure || 'unknown'}):
+   - Hard: Reframe critic
+   - Shutdown: Build energy
+   - Solve: Use tools
+   - Bounce: Use forward focus
+
+10. Change Readiness (${baseTestResults?.results.changeReadiness || 'unknown'}):
+    - Small: Use micro-habits
+    - Bold: Use challenge
+    - Habits: Use frameworks
+    - Mindset: Use identity work
 
 COACHING PRINCIPLES:
-- Speak in short, vivid, emotionally engaging sentences
-- Give one key insight or action per message
-- Use micro-commitments like "Try this for 30 seconds"
-- Invite depth: "Want to go deeper?"
-- Offer support: "Want me to hold you to this?"
-- Default to impact, not fluff
+1. Every response must reflect the user's profile
+2. Use their preferred communication style
+3. Address their specific blockers
+4. Match their energy level
+5. Respect their change readiness
+6. Give one clear action per message
+7. Use micro-commitments
+8. Invite depth when appropriate
+9. Offer accountability
+10. Focus on immediate impact
 
-Your mission: transform the user's state and momentum — in under 30 seconds.
-
-The user has taken a 10-question self-assessment base test.
-Each question maps to specific psychological insights:
-
-1. Life satisfaction (1–10)
-   - 1–3 → "low-resilience", needs validation and energy
-   - 4–6 → "seeking stability", use grounding tone
-   - 7–8 → "growth-ready", use momentum and positive challenge
-   - 9–10 → "thriving", focus on clarity, scaling, ambition
-
-2. Priority area
-   - a: Health → "body-focused", suggest habits, routines
-   - b: Relationships → "emotion-focused", use empathy, social framing
-   - c: Career/Money → "goal-driven", use outcome-based logic
-   - d: Confidence/Mindset → "identity-focused", work with beliefs and self-talk
-   - e: Focus/Discipline → "structure-seeker", offer systems, rules, tracking
-
-3. Current mindset
-   - a: Stuck → "action blocker", use small wins, low-barrier action
-   - b: Don't know what I want → "clarity seeker", use reflection and vision
-   - c: Making progress → "accelerator", challenge + momentum
-   - d: Lost/overwhelmed → "emotional overload", use calm tone + grounding
-
-4. Energy level
-   - a: Low → "low-energy", soft tone, micro-commitments
-   - b: Scattered → "chaotic mode", offer focus and structure
-   - c: Productive → "structured doer", offer next-level systems
-   - d: High/focused → "peak energy", use bold tone, scaling strategies
-
-5. Internal blocker
-   - a: Fear/doubt → "self-worth issue", use safety + encouragement
-   - b: Procrastination → "momentum blocker", use micro-actions
-   - c: Overthinking → "mental loop", use decision frameworks
-   - d: Lack of clarity → "directionless", use vision prompts
-   - e: Emotional overwhelm → "empath overload", emotional grounding + breath
-
-6. Follow-through habits
-   - a: Plan but don't act → needs "activation triggers"
-   - b: Start but don't finish → needs "completion rituals"
-   - c: Only when motivated → build "motivation-free systems"
-   - d: Consistent → challenge with higher-level structure
-
-7. Preferred support style
-   - a: Push me → use bold, direct challenges
-   - b: Encourage me → use warm, validating tone
-   - c: Ask questions → use coaching-style exploration
-   - d: Give structure → use bullet lists, sequences, how-tos
-
-8. Decision style
-   - a: Logic → T-style response: clarity, pros/cons
-   - b: Emotion → F-style: empathy, values, meaning
-   - c: Overthink → balance: limit options, nudge
-   - d: Gut → use instinct-based metaphors, short answers
-
-9. Self-talk in failure
-   - a: Hard on self → reframe inner critic
-   - b: Shut down → use soft prompts + energy building
-   - c: Problem-solve → reinforce strengths, offer tools
-   - d: Bounce back → use forward-focused coaching
-
-10. Change readiness
-    - a: Small shifts → suggest micro-habits, gentle start
-    - b: Bold moves → use energetic challenge, "Let's go"
-    - c: Habit upgrades → offer consistency frameworks
-    - d: Deep mindset → explore belief systems, identity work
-
-${baseTestResults ? `Based on the user's test results:
-${JSON.stringify(baseTestResults.results, null, 2)}
-
-Interpret this profile as follows:
-- "lifeSatisfaction" (1-10): ${baseTestResults.results.lifeSatisfaction} → ${baseTestResults.results.lifeSatisfaction <= 3 ? '"low-resilience", needs validation and energy' : 
-  baseTestResults.results.lifeSatisfaction <= 6 ? '"seeking stability", use grounding tone' :
-  baseTestResults.results.lifeSatisfaction <= 8 ? '"growth-ready", use momentum and positive challenge' :
-  '"thriving", focus on clarity, scaling, ambition'}
-- "priorityArea": ${baseTestResults.results.priorityArea} → use ${
-  baseTestResults.results.priorityArea === 'health' ? 'body-focused approach, suggest habits and routines' :
-  baseTestResults.results.priorityArea === 'relationships' ? 'emotion-focused approach with empathy and social framing' :
-  baseTestResults.results.priorityArea === 'career' ? 'goal-driven approach with outcome-based logic' :
-  baseTestResults.results.priorityArea === 'confidence' ? 'identity-focused work with beliefs and self-talk' :
-  'structure-seeker approach with systems and tracking'
-}
-- "currentMindset": ${baseTestResults.results.currentMindset} → ${
-  baseTestResults.results.currentMindset === 'stuck' ? 'use small wins and low-barrier actions' :
-  baseTestResults.results.currentMindset === 'unsure' ? 'use reflection and vision exercises' :
-  baseTestResults.results.currentMindset === 'progressing' ? 'use challenge and momentum' :
-  'use calm tone and grounding techniques'
-}
-- "energyLevel": ${baseTestResults.results.energyLevel} → ${
-  baseTestResults.results.energyLevel === 'low' ? 'use soft tone and micro-commitments' :
-  baseTestResults.results.energyLevel === 'scattered' ? 'offer focus and structure' :
-  baseTestResults.results.energyLevel === 'productive' ? 'offer next-level systems' :
-  'use bold tone and scaling strategies'
-}
-- "internalBlocker": ${baseTestResults.results.internalBlocker} → ${
-  baseTestResults.results.internalBlocker === 'fear' ? 'use safety and encouragement' :
-  baseTestResults.results.internalBlocker === 'procrastination' ? 'use micro-actions' :
-  baseTestResults.results.internalBlocker === 'overthinking' ? 'use decision frameworks' :
-  baseTestResults.results.internalBlocker === 'clarity' ? 'use vision prompts' :
-  'use emotional grounding and breath work'
-}
-- "followThroughHabits": ${baseTestResults.results.followThroughHabits} → ${
-  baseTestResults.results.followThroughHabits === 'planner' ? 'needs activation triggers' :
-  baseTestResults.results.followThroughHabits === 'starter' ? 'needs completion rituals' :
-  baseTestResults.results.followThroughHabits === 'motivated' ? 'build motivation-free systems' :
-  'challenge with higher-level structure'
-}
-- "preferredSupportStyle": ${baseTestResults.results.preferredSupportStyle} → ${
-  baseTestResults.results.preferredSupportStyle === 'push' ? 'use bold, direct challenges' :
-  baseTestResults.results.preferredSupportStyle === 'encourage' ? 'use warm, validating tone' :
-  baseTestResults.results.preferredSupportStyle === 'questions' ? 'use coaching-style exploration' :
-  'use bullet lists and sequences'
-}
-- "decisionStyle": ${baseTestResults.results.decisionStyle} → ${
-  baseTestResults.results.decisionStyle === 'logic' ? 'use T-style: clarity and pros/cons' :
-  baseTestResults.results.decisionStyle === 'emotions' ? 'use F-style: empathy and values' :
-  baseTestResults.results.decisionStyle === 'overthink' ? 'limit options and nudge forward' :
-  'use instinct-based metaphors'
-}
-- "selfTalkInFailure": ${baseTestResults.results.selfTalkInFailure} → ${
-  baseTestResults.results.selfTalkInFailure === 'hard' ? 'reframe inner critic' :
-  baseTestResults.results.selfTalkInFailure === 'shutdown' ? 'use soft prompts and energy building' :
-  baseTestResults.results.selfTalkInFailure === 'solve' ? 'reinforce strengths and offer tools' :
-  'use forward-focused coaching'
-}
-- "changeReadiness": ${baseTestResults.results.changeReadiness} → ${
-  baseTestResults.results.changeReadiness === 'small' ? 'suggest micro-habits and gentle start' :
-  baseTestResults.results.changeReadiness === 'bold' ? 'use energetic challenge' :
-  baseTestResults.results.changeReadiness === 'habits' ? 'offer consistency frameworks' :
-  'explore belief systems and identity work'
-}` : 'No base test results available yet. Try to infer tone, mindset, blockers, and preferred coaching style from their input.'}
-
-Use this to guide your coaching. Every message should feel like a mini-breakthrough. Your job is to shift mindset, build momentum, and create change — fast.`;
+Your mission: Transform the user's state and momentum in under 30 seconds, while staying true to their profile.`;
 
 export function useCoach() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -237,6 +183,81 @@ export function useCoach() {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
+  // Add initial greeting based on base test results
+  useEffect(() => {
+    if (baseTestResults && messages.length === 0) {
+      // Create a personalized greeting based on the user's profile
+      let greeting = `Hello! I'm your personalized AI coach.`;
+      
+      // Add priority area focus
+      if (baseTestResults.results.priorityArea) {
+        greeting += ` I see you're focused on improving your ${baseTestResults.results.priorityArea}.`;
+      }
+      
+      // Add mindset acknowledgment
+      if (baseTestResults.results.currentMindset) {
+        if (baseTestResults.results.currentMindset === 'stuck') {
+          greeting += ` I understand you're feeling stuck, and I'm here to help you find a path forward.`;
+        } else if (baseTestResults.results.currentMindset === 'unsure') {
+          greeting += ` I see you're unsure about your direction, and I'm here to help you gain clarity.`;
+        } else if (baseTestResults.results.currentMindset === 'progressing') {
+          greeting += ` I see you're making progress, and I'm here to help you build on that momentum.`;
+        } else if (baseTestResults.results.currentMindset === 'overwhelmed') {
+          greeting += ` I understand you're feeling overwhelmed, and I'm here to help you find calm and focus.`;
+        }
+      }
+      
+      // Add energy level acknowledgment
+      if (baseTestResults.results.energyLevel) {
+        if (baseTestResults.results.energyLevel === 'low') {
+          greeting += ` I notice your energy is low, so I'll keep our conversation gentle and supportive.`;
+        } else if (baseTestResults.results.energyLevel === 'scattered') {
+          greeting += ` I notice your energy is scattered, so I'll help you find focus and structure.`;
+        } else if (baseTestResults.results.energyLevel === 'productive') {
+          greeting += ` I see you're productive, so I'll help you optimize your systems and routines.`;
+        } else if (baseTestResults.results.energyLevel === 'high') {
+          greeting += ` I see your energy is high, so I'll match your enthusiasm and help you channel it effectively.`;
+        }
+      }
+      
+      // Add support style acknowledgment
+      if (baseTestResults.results.preferredSupportStyle) {
+        if (baseTestResults.results.preferredSupportStyle === 'push') {
+          greeting += ` I'll challenge you to push beyond your comfort zone.`;
+        } else if (baseTestResults.results.preferredSupportStyle === 'encourage') {
+          greeting += ` I'll provide warm encouragement and reassurance.`;
+        } else if (baseTestResults.results.preferredSupportStyle === 'questions') {
+          greeting += ` I'll ask powerful questions to help you explore deeper.`;
+        } else if (baseTestResults.results.preferredSupportStyle === 'guidance') {
+          greeting += ` I'll provide clear, step-by-step guidance.`;
+        }
+      }
+      
+      // Add change readiness acknowledgment
+      if (baseTestResults.results.changeReadiness) {
+        if (baseTestResults.results.changeReadiness === 'small') {
+          greeting += ` I'll suggest small, manageable shifts to start with.`;
+        } else if (baseTestResults.results.changeReadiness === 'bold') {
+          greeting += ` I'll encourage bold moves and significant changes.`;
+        } else if (baseTestResults.results.changeReadiness === 'habits') {
+          greeting += ` I'll focus on upgrading your habits and routines.`;
+        } else if (baseTestResults.results.changeReadiness === 'mindset') {
+          greeting += ` I'll help you explore deeper mindset shifts.`;
+        }
+      }
+      
+      // Add final invitation
+      greeting += ` What would you like to work on today?`;
+      
+      setMessages([{
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: greeting,
+        timestamp: new Date()
+      }]);
+    }
+  }, [baseTestResults, messages.length]);
+
   const sendMessage = useCallback(async (content: string) => {
     setIsLoading(true);
     setError(null);
@@ -251,6 +272,9 @@ export function useCoach() {
       };
       setMessages(prev => [...prev, userMessage]);
 
+      console.log('API Key available:', !!import.meta.env.VITE_OPENAI_API_KEY);
+      console.log('API Key length:', import.meta.env.VITE_OPENAI_API_KEY?.length);
+      
       // Get AI response
       const completion = await openai.chat.completions.create({
         model: "gpt-4",
@@ -259,8 +283,11 @@ export function useCoach() {
             role: "system",
             content: createSystemPrompt(baseTestResults)
           },
-          ...messages.map(m => ({ role: m.role as "user" | "assistant" | "system", content: m.content })),
-          { role: "user" as const, content }
+          ...messages.map(m => ({ 
+            role: m.role as "user" | "assistant" | "system", 
+            content: m.content 
+          })),
+          { role: "user", content }
         ],
         temperature: 0.8,
         max_tokens: 2000
@@ -270,12 +297,34 @@ export function useCoach() {
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: completion.choices[0].message.content || 'I apologize, but I am unable to respond at this time.',
+        content: completion.choices[0]?.message?.content || 'I apologize, but I am unable to respond at this time.',
         timestamp: new Date()
       };
       setMessages(prev => [...prev, aiMessage]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('OpenAI API Error:', err);
+      
+      // Enhanced error handling
+      if (err instanceof Error) {
+        console.error('Error name:', err.name);
+        console.error('Error message:', err.message);
+        console.error('Error stack:', err.stack);
+        
+        // Check for specific error types
+        if (err.message.includes('API key')) {
+          setError('API key error. Please check your OpenAI API key configuration.');
+        } else if (err.message.includes('network') || err.message.includes('fetch')) {
+          setError('Network error. Please check your internet connection.');
+        } else if (err.message.includes('permission') || err.message.includes('unauthorized')) {
+          setError('Permission denied. Please check your API key permissions.');
+        } else if (err.message.includes('rate limit')) {
+          setError('Rate limit exceeded. Please try again in a moment.');
+        } else {
+          setError(`Error: ${err.message}`);
+        }
+      } else {
+        setError('Connection error. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

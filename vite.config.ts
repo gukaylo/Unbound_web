@@ -15,6 +15,7 @@ export default defineConfig({
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
       'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization',
+      'Content-Security-Policy': "default-src 'self'; connect-src 'self' https://api.openai.com https://*.openai.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org/; style-src 'self' 'unsafe-inline' https://rsms.me/; font-src 'self' https://rsms.me/; img-src 'self' data: https:;"
     },
     proxy: {
       '/api': {

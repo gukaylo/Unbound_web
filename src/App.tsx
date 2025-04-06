@@ -4,6 +4,7 @@ import { Coach } from './pages/Coach';
 import { Tests } from './pages/Tests';
 import { Dashboard } from './pages/Dashboard';
 import { Profile } from './pages/Profile';
+import { Layout } from './components/Layout';
 
 declare global {
   interface Window {
@@ -56,14 +57,17 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-secondary-50">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/coach" element={<Coach />} />
-          <Route path="/tests" element={<Tests />} />
-          <Route path="/profile" element={<Profile />} />
-        </Routes>
-      </div>
+      <Layout>
+        <div className="min-h-screen bg-secondary-50">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/coach" element={<Coach />} />
+            <Route path="/tests" element={<Tests />} />
+            <Route path="/profile" element={<Profile />} />
+          </Routes>
+        </div>
+      </Layout>
     </Router>
   );
 }
